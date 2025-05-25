@@ -5,6 +5,18 @@ import (
 	"net"
 )
 
+type TCPPeer struct {
+	conn     net.Conn
+	outbound bool
+}
+
+func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
+	return &TCPPeer{
+		conn:     conn,
+		outbound: outbound,
+	}
+}
+
 type TCPTransport struct {
 	listenAddr string
 	listner    net.Listener
@@ -37,5 +49,8 @@ func (t *TCPTransport) StartAcceptLoop() {
 }
 
 func (t *TCPTransport) HandleConnection(conn net.Conn) {
+	peer := NewTCPPeer(conn, true)
+
+
 	fmt.Printf("TCP CONNECTED")
 }
