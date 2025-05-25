@@ -17,9 +17,11 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
+
 type TCPTransport struct {
-	listenAddr string
-	listner    net.Listener
+	listenAddr    string
+	listner       net.Listener
+	HandshakeFunc HandshakeFunc
 }
 
 func NewTCPTransport() *TCPTransport {
@@ -50,6 +52,13 @@ func (t *TCPTransport) StartAcceptLoop() {
 
 func (t *TCPTransport) HandleConnection(conn net.Conn) {
 	peer := NewTCPPeer(conn, true)
+
+	if err := t.HandshakeFunc(peer); err != nil {
+		conn.Close()
+		fmt.Printf("TCP handshake error: %s\n", err)
+		return
+	}
+
 
 
 	fmt.Printf("TCP CONNECTED")
