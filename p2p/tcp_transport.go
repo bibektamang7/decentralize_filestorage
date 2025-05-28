@@ -17,21 +17,24 @@ func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
 	}
 }
 
-
-type TCPTransport struct {
-	listenAddr    string
-	listner       net.Listener
+type TCPTransportOpts struct {
+	ListenAddr    string
 	HandshakeFunc HandshakeFunc
 }
 
-func NewTCPTransport() *TCPTransport {
+type TCPTransport struct {
+	TCPTransportOpts
+	listner net.Listener
+}
+
+func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
-		listenAddr: ":3000",
+		TCPTransportOpts: opts,
 	}
 }
 func (t *TCPTransport) ListenAndAccept() error {
 	var err error
-	t.listner, err = net.Listen("tcp", t.listenAddr)
+	t.listner, err = net.Listen("tcp", t.ListenAddr)
 	if err != nil {
 		return err
 	}
@@ -58,8 +61,6 @@ func (t *TCPTransport) HandleConnection(conn net.Conn) {
 		fmt.Printf("TCP handshake error: %s\n", err)
 		return
 	}
-
-
 
 	fmt.Printf("TCP CONNECTED")
 }

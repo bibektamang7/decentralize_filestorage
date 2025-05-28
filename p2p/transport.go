@@ -5,4 +5,6 @@ type Peer interface {
 }
 
 // Transport interface make the transportation generics
-type Transport interface{}
+type Transport interface {
+	ListenAndAccept() error
+}
