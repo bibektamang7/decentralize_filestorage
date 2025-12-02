@@ -18,28 +18,31 @@ type TCPTransportOpts struct {
 }
 type TCPTransport struct {
 	TCPTransportOpts
-	rcvChan chan RCP
+	listener net.Listener
+	rcpChan  chan RCP
 }
 
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
-		rcvChan:          make(chan RCP),
+		rcpChan:          make(chan RCP),
 	}
 }
 
 func (t *TCPTransport) Consume() <-chan RCP {
-	return t.rcvChan
+	return t.rcpChan
 }
 
-// func (t *TCPTransport) Close() error {
-// }
+func (t *TCPTransport) Close() error {
+	return t.listener.Close()
+}
 
 func (t *TCPTransport) Dial(remoteAddr string) error {
 	conn, err := net.Dial("tcp", remoteAddr)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("(connected to) : %s\n", remoteAddr)
 	go t.handleConnection(conn, true)
 	return nil
 }
@@ -66,6 +69,7 @@ func (t *TCPTransport) handleAccept(listener net.Listener) {
 
 func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 	defer func() {
+		fmt.Printf("(%s) connection closed with (%s)", conn.RemoteAddr().String(), t.ListenAddr)
 		conn.Close()
 	}()
 	peer := TCPPeer{Conn: conn, outbound: outbound}
@@ -82,6 +86,6 @@ func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 			continue
 		}
 		rcp.From = conn.RemoteAddr().Network()
-		t.rcvChan <- rcp
+		t.rcpChan <- rcp
 	}
 }

@@ -2,36 +2,48 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/bibektamang7/filestorage/p2p"
 )
 
 type FileServerOpts struct {
-	Root              string
+	StorageRoot       string
 	PathTransformFunc PathTransformFunc
 	Transport         p2p.Transport
-	Store             *Store
 	BootstrapNodes    []string
 }
 
 type FileServer struct {
 	FileServerOpts
+
+	store  *Store
 	qtChan chan struct{}
 }
 
-func NewServer(opts FileServerOpts) *FileServer {
+func NewFileServer(opts FileServerOpts) *FileServer {
 	return &FileServer{
 		FileServerOpts: opts,
 		qtChan:         make(chan struct{}),
 	}
 }
 
+func (fs *FileServer) Store(key, r io.Reader) error {
+
+	return nil
+}
+
 func (fs *FileServer) dialBootstrapNetwork() {
 	for _, node := range fs.BootstrapNodes {
-		if err := fs.Transport.Dial(node); err != nil {
-			log.Printf("(%s) failed to connect", node)
+		if len(node) == 0 {
+			continue
 		}
+		go func(node string) {
+			if err := fs.Transport.Dial(node); err != nil {
+				log.Printf("(%s) failed to connect", node)
+			}
+		}(node)
 	}
 }
 func (fs *FileServer) loop() {
@@ -53,7 +65,7 @@ func (fs *FileServer) Start() error {
 		return err
 	}
 
-	fs.dialBootstrapNodes()
+	fs.dialBootstrapNetwork()
 	fs.loop()
 	return nil
 }
