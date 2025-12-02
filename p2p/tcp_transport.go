@@ -2,65 +2,77 @@ package p2p
 
 import (
 	"fmt"
+	"log"
 	"net"
 )
 
 type TCPPeer struct {
-	conn     net.Conn
+	net.Conn
 	outbound bool
-}
-
-func NewTCPPeer(conn net.Conn, outbound bool) *TCPPeer {
-	return &TCPPeer{
-		conn:     conn,
-		outbound: outbound,
-	}
 }
 
 type TCPTransportOpts struct {
 	ListenAddr    string
 	HandshakeFunc HandshakeFunc
+	Decoder       Decoder
 }
-
 type TCPTransport struct {
 	TCPTransportOpts
-	listner net.Listener
+	rcvChan chan RCP
 }
 
 func NewTCPTransport(opts TCPTransportOpts) *TCPTransport {
 	return &TCPTransport{
 		TCPTransportOpts: opts,
+		rcvChan:          make(chan RCP),
 	}
 }
+
+func (t *TCPTransport) Consume() <-chan RCP {
+	return t.rcvChan
+}
+
+// func (t *TCPTransport) Close() error {
+// }
+
 func (t *TCPTransport) ListenAndAccept() error {
-	var err error
-	t.listner, err = net.Listen("tcp", t.ListenAddr)
+	listener, err := net.Listen("tcp", t.ListenAddr)
 	if err != nil {
 		return err
 	}
-	go t.StartAcceptLoop()
+	fmt.Println("TCP coonection is open in port : ", t.ListenAddr)
+	go t.handleAccept(listener)
 	return nil
 }
 
-func (t *TCPTransport) StartAcceptLoop() {
+func (t *TCPTransport) handleAccept(listener net.Listener) {
 	for {
-		conn, err := t.listner.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Printf("TCP accept error: %s\n", err)
+			log.Println("new connection failed")
 		}
-		fmt.Printf("New incomming connection %+v\n", conn)
-		go t.HandleConnection(conn)
+		go t.handleConnection(conn)
 	}
 }
 
-func (t *TCPTransport) HandleConnection(conn net.Conn) {
-	peer := NewTCPPeer(conn, true)
+func (t *TCPTransport) handleConnection(conn net.Conn) {
+	defer func() {
+		conn.Close()
+	}()
+	peer := TCPPeer{Conn: conn, outbound: false}
 
 	if err := t.HandshakeFunc(peer); err != nil {
-		conn.Close()
-		fmt.Printf("TCP handshake error: %s\n", err)
+		log.Println("handshake failed")
 		return
 	}
 
-	fmt.Printf("TCP CONNECTED")
+	rcp := RCP{}
+	for {
+		if err := t.Decoder.Decode(conn, rcp); err != nil {
+			log.Println("connection message decoding failed")
+			continue
+		}
+		rcp.From = conn.RemoteAddr().Network()
+		t.rcvChan <- rcp
+	}
 }
