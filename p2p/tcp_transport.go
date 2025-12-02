@@ -35,6 +35,15 @@ func (t *TCPTransport) Consume() <-chan RCP {
 // func (t *TCPTransport) Close() error {
 // }
 
+func (t *TCPTransport) Dial(remoteAddr string) error {
+	conn, err := net.Dial("tcp", remoteAddr)
+	if err != nil {
+		return err
+	}
+	go t.handleConnection(conn, true)
+	return nil
+}
+
 func (t *TCPTransport) ListenAndAccept() error {
 	listener, err := net.Listen("tcp", t.ListenAddr)
 	if err != nil {
@@ -51,15 +60,15 @@ func (t *TCPTransport) handleAccept(listener net.Listener) {
 		if err != nil {
 			log.Println("new connection failed")
 		}
-		go t.handleConnection(conn)
+		go t.handleConnection(conn, false)
 	}
 }
 
-func (t *TCPTransport) handleConnection(conn net.Conn) {
+func (t *TCPTransport) handleConnection(conn net.Conn, outbound bool) {
 	defer func() {
 		conn.Close()
 	}()
-	peer := TCPPeer{Conn: conn, outbound: false}
+	peer := TCPPeer{Conn: conn, outbound: outbound}
 
 	if err := t.HandshakeFunc(peer); err != nil {
 		log.Println("handshake failed")

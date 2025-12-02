@@ -16,6 +16,42 @@ func TestPathTransformFunc(t *testing.T) {
 	assert.Equal(t, expectedFilename, pathkey.FileName)
 }
 
+func TestReadStore(t *testing.T) {
+	opts := StoreOpts{
+		pathTransformFunc: CASPathTransformFunc,
+		Root:              "fileStorage",
+	}
+	s := Store{
+		StoreOpts: opts,
+	}
+
+	key := "mypictures"
+
+	data := []byte("some of my old pictures")
+	buf := make([]byte, 1024)
+	n, err := s.Read(key, buf)
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, n, len(data))
+}
+
+func TestDeleteFile(t *testing.T) {
+	opts := StoreOpts{
+		pathTransformFunc: CASPathTransformFunc,
+		Root:              "fileStorage",
+	}
+	s := Store{
+		StoreOpts: opts,
+	}
+
+	key := "mypictures"
+
+	if err := s.Delete(key); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestStore(t *testing.T) {
 	opts := StoreOpts{
 		pathTransformFunc: CASPathTransformFunc,
@@ -32,4 +68,7 @@ func TestStore(t *testing.T) {
 		t.Error(err)
 	}
 
+	if !s.Has(key) {
+		t.Error("key not exists")
+	}
 }

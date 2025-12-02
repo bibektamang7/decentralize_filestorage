@@ -14,6 +14,10 @@ type Pathkey struct {
 	FileName string
 }
 
+func (p Pathkey) firstName() string {
+	return strings.Split(p.PathName, "/")[0]
+}
+
 type PathTransformFunc func(string) Pathkey
 
 func defaultTransformFunc(key string) Pathkey {
@@ -64,6 +68,14 @@ func NewStore(opts StoreOpts) *Store {
 	}
 }
 
+func (s *Store) Has(key string) bool {
+
+	pathkey := s.pathTransformFunc(key)
+	fileFullPath := fmt.Sprintf("%s/%s/%s", s.Root, pathkey.PathName, pathkey.FileName)
+	_, err := os.Stat(fileFullPath)
+	return !os.IsNotExist(err)
+}
+
 func (s *Store) Read(key string, buf []byte) (int, error) {
 	return s.readStream(key, buf)
 }
@@ -76,7 +88,19 @@ func (s *Store) readStream(key string, buf []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer f.Close()
 	return f.Read(buf)
+}
+
+func (s *Store) Delete(key string) error {
+	pathkey := s.pathTransformFunc(key)
+	firstNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.firstName())
+
+	if err := os.RemoveAll(firstNameWithRoot); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Store) Write(key string, r io.Reader) error {
@@ -95,6 +119,7 @@ func (s *Store) writeStream(key string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	_, err = io.Copy(f, r)
 	return err
 }
