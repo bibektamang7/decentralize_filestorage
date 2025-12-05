@@ -76,20 +76,23 @@ func (s *Store) Has(key string) bool {
 	return !os.IsNotExist(err)
 }
 
-func (s *Store) Read(key string, buf []byte) (int, error) {
-	return s.readStream(key, buf)
+func (s *Store) Read(key string) (int64, io.ReadCloser, error) {
+	return s.readStream(key)
 }
 
-func (s *Store) readStream(key string, buf []byte) (int, error) {
+func (s *Store) readStream(key string) (int64, io.ReadCloser, error) {
 	pathkey := s.pathTransformFunc(key)
 	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.PathName)
 	fileNameWithFullPath := fmt.Sprintf("%s/%s", pathNameWithRoot, pathkey.FileName)
 	f, err := os.Open(fileNameWithFullPath)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
-	defer f.Close()
-	return f.Read(buf)
+	fi, err := f.Stat()
+	if err != nil {
+		return 0, nil, err
+	}
+	return fi.Size(), f, nil
 }
 
 func (s *Store) Delete(key string) error {
@@ -103,23 +106,22 @@ func (s *Store) Delete(key string) error {
 	return nil
 }
 
-func (s *Store) Write(key string, r io.Reader) error {
+func (s *Store) Write(key string, r io.Reader) (int64, error) {
 	return s.writeStream(key, r)
 }
 
-func (s *Store) writeStream(key string, r io.Reader) error {
+func (s *Store) writeStream(key string, r io.Reader) (int64, error) {
 	pathkey := s.pathTransformFunc(key)
 	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathkey.PathName)
 
 	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
-		return err
+		return 0, err
 	}
 	fileNameWithFullPath := fmt.Sprintf("%s/%s", pathNameWithRoot, pathkey.FileName)
 	f, err := os.Create(fileNameWithFullPath)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer f.Close()
-	_, err = io.Copy(f, r)
-	return err
+	return io.Copy(f, r)
 }

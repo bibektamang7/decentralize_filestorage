@@ -1,6 +1,12 @@
 package p2p
 
+const (
+	IncomingMessage = 0x1
+	IncomingStream  = 0x2
+)
+
 type RCP struct {
 	From    string
-	payload []byte
+	Payload []byte
+	Stream  bool
 }

@@ -28,12 +28,11 @@ func TestReadStore(t *testing.T) {
 	key := "mypictures"
 
 	data := []byte("some of my old pictures")
-	buf := make([]byte, 1024)
-	n, err := s.Read(key, buf)
+	size, _, err := s.Read(key)
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, n, len(data))
+	assert.Equal(t, size, len(data))
 }
 
 func TestDeleteFile(t *testing.T) {
@@ -64,7 +63,7 @@ func TestStore(t *testing.T) {
 	key := "mypictures"
 	data := []byte("some of my old pictures")
 
-	if err := s.Write(key, bytes.NewReader(data)); err != nil {
+	if _, err := s.Write(key, bytes.NewReader(data)); err != nil {
 		t.Error(err)
 	}
 
